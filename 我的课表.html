@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师课表查询系统</title>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .search-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        #teacherName {
+            padding: 8px;
+            font-size: 16px;
+            width: 200px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #teacherName:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+        }
+        #searchBtn {
+            padding: 8px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #searchBtn:hover {
+            background-color: #45a049;
+        }
+        .timetable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .timetable th, .timetable td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        .timetable th {
+            background-color: #f4f4f4;
+        }
+        .error-message {
+            color: red;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .file-input-container {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+        }
+        .success-message {
+            color: green;
+            text-align: center;
+            margin-top: 10px;
+        }
+        #exportBtn {
+            padding: 8px 20px;
+            font-size: 16px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        #exportBtn:hover {
+            background-color: #1976D2;
+        }
+        #exportExcelBtn {
+            padding: 8px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        #exportExcelBtn:hover {
+            background-color: #45a049;
+        }
+        /* 添加编辑框样式 */
+        .edit-form {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+        .edit-form input, .edit-form textarea {
+            width: 100%;
+            margin: 5px 0;
+            padding: 5px;
+        }
+        .edit-form button {
+            margin: 5px;
+            padding: 5px 10px;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center;">教师课表查询系统</h1>
+    
+    <div class="file-input-container">
+        <input type="file" id="excelFile" accept=".xls,.xlsx">
+        <button id="importBtn">导入课表</button>
+    </div>
+    <div id="importMsg" class="success-message"></div>
+    
+    <div class="search-container">
+        <input type="text" id="teacherName" list="teacherList" placeholder="请输入教师姓名" autocomplete="off">
+        <datalist id="teacherList">
+        </datalist>
+        <button id="searchBtn">查询</button>
+        <button id="exportBtn">导出图片</button>
+        <button id="exportExcelBtn">导出Excel</button>
+    </div>
+
+    <!-- 添加提示信息 -->
+    <div style="text-align: center; color: #666; margin: 10px 0;">
+        提示：双击课程可以修改课程信息
+    </div>
+
+    <div id="errorMsg" class="error-message"></div>
+    
+    <table class="timetable" id="timetable">
+        <thead>
+            <tr>
+                <th>节次/星期</th>
+                <th>星期一</th>
+                <th>星期二</th>
+                <th>星期三</th>
+                <th>星期四</th>
+                <th>星期五</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <th>第1-2节<br>8:00-8:45<br>8:55-9:40</th>
+                <td></td><td></td><td></td><td></td><td></td>
+            </tr>
+            <tr>
+                <th>第3-4节<br>10:00-10:45<br>10:55-11:40</th>
+                <td></td><td></td><td></td><td></td><td></td>
+            </tr>
+            <tr>
+                <th>第5-6节<br>13:30-14:15<br>14:25-15:10</th>
+                <td></td><td></td><td></td><td></td><td></td>
+            </tr>
+            <tr>
+                <th>第7-8节<br>15:20-16:05<br>16:15-17:00</th>
+                <td></td><td></td><td></td><td></td><td></td>
+            </tr>
+            <tr>
+                <th>第9-10节<br>18:30-19:30<br>19:40-20:40</th>
+                <td></td><td></td><td></td><td></td><td></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script>
+        let teacherScheduleData = null;
+        
+        // 添加教师字典
+        const teacherDictionary = new Set([
+            '严李宏', '仲鑫玮', '何隽', '何鸣', '倪峰', '刘萍', '包芳', '卞何立', 
+            '卢琳', '吴丽征', '吴叶民', '吴小红', '吴金丹', '吴钘', '周建林', '坎香', 
+            '奚达新', '姚冬梅', '姜文洁', '孔珊珊', '孙彬斌', '孙金鑫', '安强', '尤彩萍', 
+            '屠莉', '崔蓬', '张巍', '张海峰', '张赟', '张鑫', '徐亚丹', '徐雄飞', 
+            '徐鹏', '李海玲', '李秀红', '杨梅花', '柳锦涛', '梁丽敏', '江磊', '汤明伟', 
+            '沈娴', '沈建华', '沈震', '沙梅芳', '洪程阳', '温新波', '王向明', '王富伟', 
+            '王涛', '秦军', '秦玉梅', '苏宁', '苏春芳', '范蕤', '蔡佳', '许晓琴', 
+            '谢美玉', '郑伟', '金志泉', '金海峰', '陆乔叶', '陈东东', '陈俊', '陈蓓', 
+            '陈进', '高松贤', '黄成', '黄文萍'
+        ]);
+
+        // 等待DOM加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 添加清除数据的按钮
+            const fileContainer = document.querySelector('.file-input-container');
+            if (fileContainer) {
+                fileContainer.innerHTML += `
+                    <button id="clearBtn" style="margin-left: 10px;">清除保存的数据</button>
+                `;
+            }
+
+            // 绑定导入按钮事件
+            const importBtn = document.getElementById('importBtn');
+            if (importBtn) {
+                importBtn.addEventListener('click', function() {
+                    const fileInput = document.getElementById('excelFile');
+                    const file = fileInput.files[0];
+                    
+                    if (!file) {
+                        document.getElementById('errorMsg').innerText = '请选择Excel文件';
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, {type: 'array'});
+                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                            const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+                            
+                            processExcelData(jsonData);
+                            
+                            localStorage.setItem('teacherScheduleData', JSON.stringify(teacherScheduleData));
+                            
+                            document.getElementById('importMsg').innerText = '课表导入成功并已保存！';
+                            document.getElementById('errorMsg').innerText = '';
+                        } catch (error) {
+                            document.getElementById('errorMsg').innerText = '文件处理失败：' + error.message;
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+
+            // 绑定清除按钮事件
+            const clearBtn = document.getElementById('clearBtn');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    localStorage.removeItem('teacherScheduleData');
+                    teacherScheduleData = null;
+                    document.getElementById('importMsg').innerText = '数据已清除';
+                    document.getElementById('errorMsg').innerText = '';
+                    const cells = document.querySelectorAll('.timetable td');
+                    cells.forEach(cell => cell.innerHTML = '');
+                });
+            }
+
+            // 绑定搜索按钮事件
+            const searchBtn = document.getElementById('searchBtn');
+            if (searchBtn) {
+                searchBtn.addEventListener('click', function() {
+                    const teacherName = document.getElementById('teacherName').value.trim();
+                    
+                    if (!teacherName) {
+                        document.getElementById('errorMsg').innerText = '请输入教师姓名';
+                        return;
+                    }
+                    
+                    if (!teacherScheduleData) {
+                        document.getElementById('errorMsg').innerText = '请先导入课表数据';
+                        return;
+                    }
+                    
+                    const schedule = teacherScheduleData[teacherName];
+                    if (!schedule) {
+                        document.getElementById('errorMsg').innerText = '未找到该教师的课表信息';
+                        return;
+                    }
+                    
+                    displaySchedule(schedule);
+                    document.getElementById('errorMsg').innerText = '';
+                });
+            }
+
+            // 填充教师列表
+            const teacherList = document.getElementById('teacherList');
+            Array.from(teacherDictionary).sort().forEach(teacher => {
+                const option = document.createElement('option');
+                option.value = teacher;
+                teacherList.appendChild(option);
+            });
+
+            // 修改输入框事件监听部分
+            const teacherNameInput = document.getElementById('teacherName');
+            if (teacherNameInput) {
+                teacherNameInput.addEventListener('input', function() {
+                    const inputValue = this.value.trim().toLowerCase();
+                    
+                    // 清空现有选项
+                    teacherList.innerHTML = '';
+                    
+                    // 筛选并添加匹配的教师
+                    Array.from(teacherDictionary)
+                        .filter(teacher => teacher.toLowerCase().includes(inputValue))
+                        .sort()
+                        .forEach(teacher => {
+                            const option = document.createElement('option');
+                            option.value = teacher;
+                            teacherList.appendChild(option);
+                        });
+                });
+
+                // 添加输入框验证
+                teacherNameInput.addEventListener('change', function() {
+                    const inputValue = this.value.trim();
+                    if (inputValue && !teacherDictionary.has(inputValue)) {
+                        document.getElementById('errorMsg').innerText = '请选择或输入正确的教师姓名';
+                    } else {
+                        document.getElementById('errorMsg').innerText = '';
+                    }
+                });
+
+                // 添加回车键事件监听
+                teacherNameInput.addEventListener('keypress', function(event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault(); // 阻止默认的回车键行为
+                        document.getElementById('searchBtn').click(); // 触发查询按钮的点击事件
+                    }
+                });
+            }
+
+            // 尝试从localStorage加载数据
+            const savedData = localStorage.getItem('teacherScheduleData');
+            if (savedData) {
+                teacherScheduleData = JSON.parse(savedData);
+                document.getElementById('importMsg').innerText = '已加载保存的课表数据';
+            }
+
+           // 绑定导出按钮事件
+           const exportBtn = document.getElementById('exportBtn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', function() {
+                    const teacherName = document.getElementById('teacherName').value.trim();
+                    if (!teacherName) {
+                        document.getElementById('errorMsg').innerText = '请输入教师姓名';
+                        return;
+                    }
+                    
+                    const table = document.getElementById('timetable');
+                    if (!table.querySelector('td').innerHTML) {
+                        document.getElementById('errorMsg').innerText = '请先查询课表';
+                        return;
+                    }
+
+                    // 创建一个新的div用于导出
+                    const exportDiv = document.createElement('div');
+                    exportDiv.style.padding = '20px';
+                    exportDiv.style.background = 'white';
+                    
+                    // 添加标题
+                    const title = document.createElement('h2');
+                    title.style.textAlign = 'center';
+                    title.style.marginBottom = '20px';
+                    title.innerText = `${teacherName}老师的课表`;
+                    exportDiv.appendChild(title);
+                    
+                    // 添加课表
+                    const tableClone = table.cloneNode(true);
+                    exportDiv.appendChild(tableClone);
+                    
+                    // 临时将div添加到body
+                    document.body.appendChild(exportDiv);
+                    
+                    // 转换为图片
+                    html2canvas(exportDiv, {
+                        scale: 2, // 提高图片质量
+                        backgroundColor: '#ffffff'
+                    }).then(canvas => {
+                        // 创建下载链接
+                        const link = document.createElement('a');
+                        link.download = `${teacherName}老师的课表.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                        
+                        // 移除临时div
+                        document.body.removeChild(exportDiv);
+                    }).catch(error => {
+                        document.getElementById('errorMsg').innerText = '导出失败：' + error.message;
+                        document.body.removeChild(exportDiv);
+                    });
+                });
+            }
+
+            // 绑定Excel导出按钮事件
+            const exportExcelBtn = document.getElementById('exportExcelBtn');
+            if (exportExcelBtn) {
+                exportExcelBtn.addEventListener('click', function() {
+                    const teacherName = document.getElementById('teacherName').value.trim();
+                    if (!teacherName) {
+                        document.getElementById('errorMsg').innerText = '请输入教师姓名';
+                        return;
+                    }
+                    
+                    const schedule = teacherScheduleData[teacherName];
+                    if (!schedule) {
+                        document.getElementById('errorMsg').innerText = '未找到该教师的课表信息';
+                        return;
+                    }
+
+                    // 创建Excel工作表数据
+                    const ws_data = [
+                        ['', `${teacherName}老师的课表`, '', '', '', ''], // 标题行
+                        ['节次/星期', '星期一', '星期二', '星期三', '星期四', '星期五'],
+                        ['第1-2节\n8:00-8:45\n8:55-9:40', '', '', '', '', ''],
+                        ['第3-4节\n10:00-10:45\n10:55-11:40', '', '', '', '', ''],
+                        ['第5-6节\n13:30-14:15\n14:25-15:10', '', '', '', '', ''],
+                        ['第7-8节\n15:20-16:05\n16:15-17:00', '', '', '', '', ''],
+                        ['第9-10节\n18:30-19:30\n19:40-20:40', '', '', '', '', '']
+                    ];
+
+                    // 填充课表数据
+                    const mergedSchedule = {};
+                    schedule.forEach(course => {
+                        const key = `${course.weekday}-${course.period}`;
+                        if (!mergedSchedule[key]) {
+                            mergedSchedule[key] = {
+                                course: course.course,
+                                location: course.location,
+                                weekday: course.weekday,
+                                period: course.period,
+                                classes: [course.class]
+                            };
+                        } else if (!mergedSchedule[key].classes.includes(course.class)) {
+                            mergedSchedule[key].classes.push(course.class);
+                        }
+                    });
+
+                    // 将合并后的数据填入工作表
+                    Object.values(mergedSchedule).forEach(course => {
+                        if (course.weekday >= 1 && course.weekday <= 5 && course.period >= 1 && course.period <= 5) {
+                            const content = [
+                                course.course,
+                                course.classes.join('，'),
+                                course.location
+                            ].filter(Boolean).join('\n');
+                            ws_data[course.period + 1][course.weekday] = content;
+                        }
+                    });
+
+                    // 创建工作簿
+                    const wb = XLSX.utils.book_new();
+                    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+                    // 设置单元格样式
+                    ws['!merges'] = [
+                        { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } } // 合并标题行
+                    ];
+
+                    // 设置列宽和行高
+                    ws['!cols'] = [
+                        { wch: 25 }, // 第一列宽度
+                        { wch: 25 }, { wch: 25 }, { wch: 25 }, { wch: 25 }, { wch: 25 } // 其他列宽度
+                    ];
+                    ws['!rows'] = [
+                        { hpt: 30 }, // 标题行高度
+                        { hpt: 30 }, // 表头行高度
+                        { hpt: 80 }, { hpt: 80 }, { hpt: 80 }, { hpt: 80 }, { hpt: 80 } // 内容行高度
+                    ];
+
+                    // 设置样式
+                    const range = XLSX.utils.decode_range(ws['!ref']);
+                    for (let R = range.s.r; R <= range.e.r; R++) {
+                        for (let C = range.s.c; C <= range.e.c; C++) {
+                            const cell_address = { c: C, r: R };
+                            const cell_ref = XLSX.utils.encode_cell(cell_address);
+                            if (!ws[cell_ref]) continue;
+                            
+                            // 添加单元格样式
+                            ws[cell_ref].s = {
+                                alignment: {
+                                    vertical: 'center',
+                                    horizontal: 'center',
+                                    wrapText: true
+                                },
+                                border: {
+                                    top: { style: 'thin' },
+                                    bottom: { style: 'thin' },
+                                    left: { style: 'thin' },
+                                    right: { style: 'thin' }
+                                }
+                            };
+
+                            // 标题行样式
+                            if (R === 0) {
+                                ws[cell_ref].s.font = { bold: true, sz: 14 };
+                            }
+                            // 表头和第一列样式
+                            else if (R === 1 || C === 0) {
+                                ws[cell_ref].s.fill = { fgColor: { rgb: "F4F4F4" } };
+                                ws[cell_ref].s.font = { bold: true };
+                            }
+                        }
+                    }
+
+                    // 添加工作表到工作簿
+                    XLSX.utils.book_append_sheet(wb, ws, `${teacherName}的课表`);
+
+                    // 导出Excel文件
+                    XLSX.writeFile(wb, `${teacherName}老师的课表.xlsx`);
+                });
+            }
+
+            // 添加表格单元格双击事件
+            const table = document.getElementById('timetable');
+            table.addEventListener('dblclick', function(e) {
+                const cell = e.target.closest('td');
+                if (!cell) return; // 如果不是单元格则返回
+                
+                const teacherName = document.getElementById('teacherName').value.trim();
+                if (!teacherName || !teacherScheduleData || !teacherScheduleData[teacherName]) {
+                    return;
+                }
+
+                // 获取课程信息
+                const row = cell.parentElement;
+                const period = Array.from(row.parentElement.children).indexOf(row) + 1;
+                const weekday = Array.from(cell.parentElement.children).indexOf(cell);
+
+                // 找到当前时间段的课程
+                const currentCourse = teacherScheduleData[teacherName].find(item => 
+                    item.weekday === weekday && item.period === period
+                );
+                
+                // 创建遮罩层
+                const overlay = document.createElement('div');
+                overlay.className = 'overlay';
+                document.body.appendChild(overlay);
+
+                // 创建编辑表单
+                const form = document.createElement('div');
+                form.className = 'edit-form';
+                form.innerHTML = `
+                    <h3>编辑课程信息</h3>
+                    <input type="text" id="editCourse" placeholder="课程名称" value="${currentCourse?.course || ''}">
+                    <input type="text" id="editClass" placeholder="班级" value="${currentCourse?.class || ''}">
+                    <input type="text" id="editLocation" placeholder="教室" value="${currentCourse?.location || ''}">
+                    <div style="text-align: center; margin-top: 10px;">
+                        <button id="saveEdit">保存</button>
+                        <button id="cancelEdit">取消</button>
+                    </div>
+                `;
+                document.body.appendChild(form);
+
+                // 保存按钮事件
+                document.getElementById('saveEdit').addEventListener('click', function() {
+                    const newCourse = document.getElementById('editCourse').value.trim();
+                    const newClass = document.getElementById('editClass').value.trim();
+                    const newLocation = document.getElementById('editLocation').value.trim();
+
+                    if (currentCourse) {
+                        // 如果找到现有课程，直接修改其属性
+                        currentCourse.course = newCourse;
+                        currentCourse.class = newClass;
+                        currentCourse.location = newLocation;
+                    } else if (newCourse || newClass || newLocation) {
+                        // 如果是新课程，添加到数组中
+                        teacherScheduleData[teacherName].push({
+                            course: newCourse,
+                            class: newClass,
+                            location: newLocation,
+                            weekday: weekday,
+                            period: period
+                        });
+                    }
+
+                    // 保存到localStorage
+                    localStorage.setItem('teacherScheduleData', JSON.stringify(teacherScheduleData));
+                    
+                    // 重新显示课表
+                    displaySchedule(teacherScheduleData[teacherName]);
+
+                    // 清理编辑界面
+                    document.body.removeChild(form);
+                    document.body.removeChild(overlay);
+                });
+
+                // 取消按钮事件
+                document.getElementById('cancelEdit').addEventListener('click', function() {
+                    document.body.removeChild(form);
+                    document.body.removeChild(overlay);
+                });
+            });
+        });
+
+        function processExcelData(data) {
+            teacherScheduleData = {};
+                        
+            // 在控制台显示原始Excel数据
+            console.log('Excel原始数据:', data);
+
+            // 修正星期几对应的列范围
+            const weekdayColumns = {
+                1: {start: 2, end: 4},   // 星期一 (C-E)
+                2: {start: 5, end: 8},   // 星期二 (F-I)
+                3: {start: 9, end: 12},  // 星期三 (J-M)
+                4: {start: 13, end: 16}, // 星期四 (N-Q)
+                5: {start: 17, end: 20}  // 星期五 (R-U)
+            };
+            
+            // 从第4行开始处理数据（索引3）
+            for (let rowIndex = 3; rowIndex < data.length; rowIndex++) {
+                const row = data[rowIndex];
+                if (!row || row.length < 3) continue;
+                
+                // 获取班级信息
+                const classInfo = String(row[0] || '').split('\n');
+                const className = classInfo[0]; // 班级名称
+                
+                // 遍历每一天
+                for (let weekday = 1; weekday <= 5; weekday++) {
+                    const {start, end} = weekdayColumns[weekday];
+                    
+                    // 遍历该天的所有列
+                    for (let colIndex = start; colIndex <= end; colIndex++) {
+                        const cellContent = String(row[colIndex] || '');
+                        if (!cellContent) continue;
+                        
+                        // 遍历教师字典，查找单元格中的教师名字
+                        for (const teacherName of teacherDictionary) {
+                            const index = cellContent.indexOf(teacherName);
+                            if (index !== -1) {
+                                // 找到教师名字，提取课程名称和班级信息
+                                const courseName = cellContent.substring(0, index).trim();
+                                const classroom = cellContent.substring(index + teacherName.length).trim();
+                                
+                                // 初始化该教师的数组
+                                if (!teacherScheduleData[teacherName]) {
+                                    teacherScheduleData[teacherName] = [];
+                                }
+                                
+                                // 根据列的相对位置确定是第几节课
+                                const relativeCol = colIndex - start;
+                                let period;
+                                switch(relativeCol) {
+                                    case 0: period = 1; break; // 第1-2节
+                                    case 1: period = 2; break; // 第3-4节
+                                    case 2: period = 3; break; // 第5-6节
+                                    case 3: period = 4; break; // 第7-8节
+                                    case 4: period = 5; break; // 第9-10节
+                                    default: continue;
+                                }
+                                
+                                // 添加课程信息
+                                teacherScheduleData[teacherName].push({
+                                    course: courseName,
+                                    location: classroom,
+                                    weekday: weekday,
+                                    period: period,
+                                    class: className
+                                });
+                                
+                                break; // 找到教师后就跳出循环
+                            }
+                        }
+                    }
+                }
+            }
+            
+                        
+            // 在控制台显示处理后的数据
+            console.log('处理后的教师课表数据:', teacherScheduleData);
+
+            // 将教师姓名数组排序并以字符串形式输出到控制台
+            const teacherString = Array.from(teacherDictionary).sort().join('，');
+            console.log('所有教师姓名：' + teacherString);
+        }
+
+        function displaySchedule(schedule) {
+            // 清空现有表格
+            const cells = document.querySelectorAll('.timetable td');
+            cells.forEach(cell => cell.innerHTML = '');
+            
+            // 创建一个临时对象来存储合并后的课程信息
+            const mergedSchedule = {};
+            
+            // 合并相同时间段的课程信息
+            schedule.forEach(course => {
+                const key = `${course.weekday}-${course.period}`;
+                if (!mergedSchedule[key]) {
+                    mergedSchedule[key] = {
+                        course: course.course,
+                        location: course.location,
+                        weekday: course.weekday,
+                        period: course.period,
+                        classes: [course.class]
+                    };
+                } else {
+                    // 如果是相同的课程，只添加班级信息
+                    if (!mergedSchedule[key].classes.includes(course.class)) {
+                        mergedSchedule[key].classes.push(course.class);
+                    }
+                }
+            });
+            
+            // 填充课表
+            Object.values(mergedSchedule).forEach(course => {
+                const weekday = course.weekday;
+                const period = course.period;
+                
+                if (weekday >= 1 && weekday <= 5 && period >= 1 && period <= 5) {
+                    const cell = document.querySelector(`.timetable tbody tr:nth-child(${period}) td:nth-child(${weekday + 1})`);
+                    if (cell) {
+                        const courseText = course.course ? course.course : '';
+                        const classText = course.classes.length > 0 ? `<br>${course.classes.join('，')}` : '';
+                        const locationText = course.location ? `<br>${course.location}` : '';
+                        cell.innerHTML = courseText + classText + locationText;
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
